@@ -17,9 +17,12 @@ module Lita
       })
 
       def price(response)
-        coin      = response.args.shift
-        currency  = response.args.find{ |x| x =~ /[A-Z]+/ } || 'USD'
-        exchange  = response.args.find{ |x| x =~ /[a-z]+/ } || 'CCCAGG'
+        args      = response.args
+        coin      = args.shift
+        currency  = args.find{ |x| x =~ /[A-Z]+/ } || 'USD'
+        exchange  = args.find{ |x| x =~ /e:[A-Za-z]+/ } || 'CCCAGG'
+        exchange = exchange.upcase
+        exchange.gsub!('e:','')
 
         url   = "https://min-api.cryptocompare.com/data/price?fsym=#{ coin }&tsyms=#{ currency }&e=#{ exchange }"
         resp  = HTTParty.get(url)
