@@ -28,7 +28,7 @@ Lita.configure do |config|
   # config.handlers.some_handler.some_config_key = "value"
 
   config.robot.adapter = :slack
-  # config.robot.admins = [ENV["ADMIN_ID"]]
+  config.robot.admins = []
   config.adapters.slack.token = ENV['SLACK_TOKEN']
 
   # config.adapters.slack.link_names = true
