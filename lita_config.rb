@@ -6,7 +6,7 @@ Lita.configure do |config|
   config.robot.locale = :en
 
   # config.redis
-  # config.redis[:url] = ENV["REDISTOGO_URL"]
+  config.redis[:url] = ENV["REDIS_URL"]
 
   config.robot.log_level = :info
 
