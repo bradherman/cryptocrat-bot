@@ -7,6 +7,7 @@ Lita.configure do |config|
 
   # config.redis
   config.redis[:url] = ENV["REDIS_URL"]
+  config.http.port   = ENV["PORT"]
 
   config.robot.log_level = :info
 
