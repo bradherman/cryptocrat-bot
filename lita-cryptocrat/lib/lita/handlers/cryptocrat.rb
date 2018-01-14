@@ -58,7 +58,7 @@ module Lita
           pct_w     = percent(coin['percent_change_7d'])
 
           msg += "*#{ coin['name'] }*: #{ coin['symbol'] } - $#{ price_usd } / ฿#{ price_btc }\n"
-          msg += "#{ pct_hr }%/hr - #{ pct_d }%/d - #{ pct_w }%/w\n"
+          msg += "*Change*: #{ pct_hr }%/hr - #{ pct_d }%/d - #{ pct_w }%/w\n"
           msg += "*Market Cap*: $#{ mc_usd }\n"
           msg += "*Supply*: #{ available } / #{ max }\n\n"
         end
