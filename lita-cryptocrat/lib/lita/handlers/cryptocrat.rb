@@ -103,6 +103,34 @@ module Lita
         end
       end
 
+      def calendar
+        coins_url = "https://coinmarketcal.com/api/coins"
+        resp      = HTTParty.get(coins_url)
+        coins     = JSON.parse(resp.body)
+        coin      = response.args.first
+        coin      = coins.find("(#{ coin })")
+        cal_url   = "https://coinmarketcal.com/api/events?page=1&max=10&coins=#{ coin }&showPastEvent=false"
+        resp      = HTTParty.get(cal_url)
+        events    = JSON.parse(resp.body)
+        msg       = ""
+
+        events.select{ |event| event['percentage'] > 60 }.each do |event|
+          title       = event['title']
+          date        = Time.parse(event['date_event'])
+          description = event['description']
+          proof_url   = event['proof']
+          categories  = event['categories']
+
+          msg += "*<!date^#{ date.to_i }^{date_short}|Unknown>*: <#{ proof_url }|#{ title }>\n"
+        end
+
+        if response.message.body.include?('-p')
+          response.reply_privately msg
+        else
+          response.reply msg
+        end
+      end
+
       # # # # # # # #
 
       def commas(str)
