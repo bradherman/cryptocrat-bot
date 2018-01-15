@@ -103,12 +103,12 @@ module Lita
         end
       end
 
-      def calendar
+      def calendar(response)
         coins_url = "https://coinmarketcal.com/api/coins"
         resp      = HTTParty.get(coins_url)
         coins     = JSON.parse(resp.body)
         coin      = response.args.first
-        coin      = coins.find("(#{ coin })")
+        coin      = coins.find{ |c| c.include?("(#{ coin })") }
         cal_url   = "https://coinmarketcal.com/api/events?page=1&max=10&coins=#{ coin }&showPastEvent=false"
         resp      = HTTParty.get(cal_url)
         events    = JSON.parse(resp.body)

@@ -5,10 +5,6 @@ Lita.configure do |config|
 
   config.robot.locale = :en
 
-  # config.redis
-  config.redis[:url] = ENV["REDIS_URL"]
-  config.http.port   = ENV["PORT"]
-
   config.robot.log_level = :info
 
   # An array of user IDs that are considered administrators. These users
@@ -27,6 +23,12 @@ Lita.configure do |config|
   ## documentation for options.
   # config.handlers.some_handler.some_config_key = "value"
 
+  ## DEV
+  # config.robot.adapter = :shell
+
+  ## PROD
+  config.redis[:url] = ENV["REDIS_URL"]
+  config.http.port   = ENV["PORT"]
   config.robot.adapter = :slack
   config.robot.admins = []
   config.adapters.slack.token = ENV['SLACK_TOKEN']
