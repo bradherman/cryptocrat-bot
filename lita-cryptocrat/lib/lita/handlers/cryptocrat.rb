@@ -32,11 +32,11 @@ module Lita
         time      = args.find{ |x| x =~ /\d+\.\w+/ }
 
         if time
-          time  = eval("#{ time }.ago").to_i
-          url   = "https://min-api.cryptocompare.com/data/pricehistorical?fsym=#{ coin }&tsyms=#{ currency }&ts=#{ time }"
+          time  = eval("#{ time }.ago")
+          url   = "https://min-api.cryptocompare.com/data/pricehistorical?fsym=#{ coin }&tsyms=#{ currency }&ts=#{ time.to_i }"
           resp  = HTTParty.get(url)
           price = JSON.parse(resp.body)
-          msg   = "*#{ coin }*: #{ price[coin][currency] }#{ currency }"
+          msg   = "*#{ coin }*: #{ price[coin][currency] }#{ currency } - #{ time.strftime('%D - %T') }"
         else
           url   = "https://min-api.cryptocompare.com/data/price?fsym=#{ coin }&tsyms=#{ currency }&e=#{ exchange }"
           resp  = HTTParty.get(url)
