@@ -36,7 +36,7 @@ module Lita
           url   = "https://min-api.cryptocompare.com/data/pricehistorical?fsym=#{ coin }&tsyms=#{ currency }&ts=#{ time.to_i }"
           resp  = HTTParty.get(url)
           price = JSON.parse(resp.body)
-          msg   = "*#{ coin }*: #{ price[coin][currency] }#{ currency } - #{ time.strftime('%D - %T') }"
+          msg   = "*#{ coin }*: #{ price[coin][currency] }#{ currency } - (_#{ time.strftime('%D - %T') }_)"
         else
           url   = "https://min-api.cryptocompare.com/data/price?fsym=#{ coin }&tsyms=#{ currency }&e=#{ exchange }"
           resp  = HTTParty.get(url)
