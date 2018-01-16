@@ -34,13 +34,17 @@ module Lita
         if time
           time  = eval("#{ time }.ago").to_i
           url   = "https://min-api.cryptocompare.com/data/pricehistorical?fsym=#{ coin }&tsyms=#{ currency }&ts=#{ time }"
+          resp  = HTTParty.get(url)
+          price = JSON.parse(resp.body)
+          msg   = "*#{ coin }*: #{ price[coin][currency] }#{ currency }"
         else
           url   = "https://min-api.cryptocompare.com/data/price?fsym=#{ coin }&tsyms=#{ currency }&e=#{ exchange }"
+          resp  = HTTParty.get(url)
+          price = JSON.parse(resp.body)
+          msg   = "*#{ coin }*: #{ price[currency] }#{ currency }"
         end
 
-        resp  = HTTParty.get(url)
-        price = JSON.parse(resp.body)
-        msg   = "*#{ coin }*: #{ price[currency] }#{ currency }"
+
 
         if response.message.body.include?('-p')
           response.reply_privately msg
