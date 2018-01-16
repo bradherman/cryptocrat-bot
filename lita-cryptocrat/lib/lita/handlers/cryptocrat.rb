@@ -1,5 +1,6 @@
 require 'json'
 require 'httparty'
+require 'active_support/core_ext/numeric/time'
 
 module Lita
   module Handlers
@@ -26,9 +27,17 @@ module Lita
         currency  = args.find{ |x| x =~ /[A-Z]+/ } || 'USD'
         exchange  = args.find{ |x| x =~ /e:[A-Za-z]+/ } || 'CCCAGG'
         exchange.gsub!('e:','')
-        exchange = exchange.upcase
+        exchange  = exchange.upcase
 
-        url   = "https://min-api.cryptocompare.com/data/price?fsym=#{ coin }&tsyms=#{ currency }&e=#{ exchange }"
+        time      = args.find{ |x| x =~ /\d+\.\w+/ }
+
+        if time
+          time  = eval("#{ time }.ago").to_i
+          url   = "https://min-api.cryptocompare.com/data/pricehistorical?fsym=#{ coin }&tsyms=#{ currency }&ts=#{ time }"
+        else
+          url   = "https://min-api.cryptocompare.com/data/price?fsym=#{ coin }&tsyms=#{ currency }&e=#{ exchange }"
+        end
+
         resp  = HTTParty.get(url)
         price = JSON.parse(resp.body)
         msg   = "*#{ coin }*: #{ price[currency] }#{ currency }"
@@ -150,3 +159,4 @@ module Lita
     end
   end
 end
+
