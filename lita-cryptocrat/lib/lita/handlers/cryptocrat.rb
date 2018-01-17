@@ -29,6 +29,12 @@ module Lita
           help: {
             '.cal [COIN]' => 'Replies with upcoming events for the coin.'
           }
+        },
+        global: {
+          regex: /global/,
+          help: {
+            '.global' => 'Replies with data about the global crypto market.'
+          }
         }
       }
 
@@ -44,6 +50,27 @@ module Lita
       route(regex_for(:top),        :top,       command: true,  help: help_for(:top))
       route(regex_for(:price),      :price,     command: true,  help: help_for(:price))
       route(regex_for(:calendar),   :calendar,  command: true,  help: help_for(:calendar))
+      route(regex_for(:global),     :global,    command: true,  help: help_for(:global))
+
+      def global(response)
+        url   = 'https://api.coinmarketcap.com/v1/global/'
+        resp  = HTTParty.get(url)
+        data  = JSON.parse(resp.body)
+
+        msg   = ""
+
+        total_mc = data['total_market_cap_usd']
+        active   = data['active_currencies']
+
+        msg += "*Total Market Cap*: $#{ total_mc }\n"
+        msg += "*Active Coins*: #{ active }"
+
+        if response.message.body.include?('-p')
+          response.reply_privately msg
+        else
+          response.reply msg
+        end
+      end
 
       def price(response)
         args      = response.args
@@ -81,7 +108,13 @@ module Lita
         coins = JSON.parse(resp.body)
         msg   = ""
 
+        global_url  = 'https://api.coinmarketcap.com/v1/global/'
+        resp        = HTTParty.get(url)
+        global      = JSON.parse(resp.body)
+        total_mc    = global['total_market_cap_usd']
+
         coins.each do |coin|
+          pct_of_market = sprintf("%0.2f", percent(coin['price_usd'] / total_mc))
           price_usd = commas(coin['price_usd'])
           price_btc = commas(coin['price_btc'])
           mc_usd    = commas(coin['market_cap_usd'])
@@ -92,9 +125,10 @@ module Lita
           pct_w     = percent(coin['percent_change_7d'])
 
           msg += "*#{ coin['name'] }*: #{ coin['symbol'] } - $#{ price_usd } / ฿#{ price_btc }\n"
-          msg += "*Change*: #{ pct_hr }%/hr - #{ pct_d }%/d - #{ pct_w }%/w\n"
-          msg += "*Market Cap*: $#{ mc_usd }\n"
-          msg += "*Supply*: #{ available } / #{ max }\n\n"
+          msg += "   *Percent of Total Market*: #{ pct_of_market }%"
+          msg += "   *Change*: #{ pct_hr }%/hr - #{ pct_d }%/d - #{ pct_w }%/w\n"
+          msg += "   *Market Cap*: $#{ mc_usd }\n"
+          msg += "   *Supply*: #{ available } / #{ max }\n\n"
         end
 
         if response.message.body.include?('-p')
