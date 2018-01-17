@@ -7,7 +7,7 @@ module Lita
     class Cryptocrat < Handler
       COMMANDS = {
         coin_info: {
-          regex: /![A-Z]{1,5}/,
+          regex: /![a-zA-Z]{1,5}/,
           help: {
             '!SYM' => 'Replies with basic info about the coin.'
           }
@@ -25,7 +25,7 @@ module Lita
           }
         },
         calendar: {
-          regex: /cal [A-Z]{1,5}/,
+          regex: /cal [a-zA-Z]{1,5}/,
           help: {
             '.cal [COIN]' => 'Replies with upcoming events for the coin.'
           }
@@ -47,9 +47,9 @@ module Lita
 
       def price(response)
         args      = response.args
-        coin      = args.shift
-        currency  = args.find{ |x| x =~ /[A-Z]+/ } || 'USD'
-        exchange  = args.find{ |x| x =~ /e:[A-Za-z]+/ } || 'CCCAGG'
+        coin      = args.shift.upcase
+        currency  = args.find{ |x| x =~ /[a-zA-Z]+/ } || 'USD'
+        exchange  = args.find{ |x| x =~ /e:[a-zA-Z]+/ } || 'CCCAGG'
         exchange.gsub!('e:','')
         exchange  = exchange.upcase
         time      = args.find{ |x| x =~ /\d+\.\w+/ }
@@ -105,7 +105,7 @@ module Lita
       end
 
       def coin_info(response)
-        coin  = response.match_data[0].strip.sub('!', '')
+        coin  = response.match_data[0].strip.sub('!', '').upcase
         tsyms = ['USD', 'ETH', 'BTC']
         tsyms.delete(coin)
         url   = "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=#{ coin }&tsyms=#{ tsyms.join(',') }"
