@@ -23,7 +23,13 @@ Lita.configure do |config|
   ## documentation for options.
   # config.handlers.some_handler.some_config_key = "value"
 
-  ## DEV
+  # config.adapters.slack.link_names = true
+  # config.adapters.slack.parse = "full"
+  # config.adapters.slack.unfurl_links = false
+  # config.adapters.slack.unfurl_media = false
+
+
+  ## DEV - uncomment this and comment out the slack/redis stuff when developing
   # config.robot.adapter = :shell
 
   ## PROD
@@ -32,9 +38,4 @@ Lita.configure do |config|
   config.robot.adapter = :slack
   config.robot.admins = []
   config.adapters.slack.token = ENV['SLACK_TOKEN']
-
-  # config.adapters.slack.link_names = true
-  # config.adapters.slack.parse = "full"
-  # config.adapters.slack.unfurl_links = false
-  # config.adapters.slack.unfurl_media = false
 end

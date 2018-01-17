@@ -5,21 +5,45 @@ require 'active_support/core_ext/numeric/time'
 module Lita
   module Handlers
     class Cryptocrat < Handler
-      route(/![A-Z]{1,5}/, :coin_info, command: false, help: {
-        "!SYM" => "Replies with info about coin."
-      })
+      COMMANDS = {
+        coin_info: {
+          regex: /![A-Z]{1,5}/,
+          help: {
+            '!SYM' => 'Replies with basic info about the coin.'
+          }
+        },
+        top: {
+          regex: /^top/,
+          help: {
+            '.top [X]' => 'Replies with info on top X or 5 coins'
+          }
+        },
+        price: {
+          regex: /price/,
+          help: {
+            '.price [COIN] [CURRENCY] e:[exchange]' => 'Replies with price on exchange or global average'
+          }
+        },
+        calendar: {
+          regex: /cal [A-Z]{1,5}/,
+          help: {
+            '.cal [COIN]' => 'Replies with upcoming events for the coin.'
+          }
+        }
+      }
 
-      route(/^top/, :top, command: true, help: {
-        ".top [X]" => "Replies with info on top X or 5 coins"
-      })
+      def self.regex_for(name)
+        COMMANDS[name][:regex]
+      end
 
-      route(/price/, :price, command: true, help: {
-        ".price [COIN] [CURRENCY] [exchange]" => "Replies with price on exchange or global average"
-      })
+      def self.help_for(name)
+        COMMANDS[name][:help]
+      end
 
-      route(/cal [A-Z]{1,5}/, :calendar, command: true, help: {
-        ".cal [COIN]" => "Replies with upcoming events for the coin."
-      })
+      route(regex_for(:coin_info),  :coin_info, command: false, help: help_for(:coin_info))
+      route(regex_for(:top),        :top,       command: true,  help: help_for(:top))
+      route(regex_for(:price),      :price,     command: true,  help: help_for(:price))
+      route(regex_for(:calendar),   :calendar,  command: true,  help: help_for(:calendar))
 
       def price(response)
         args      = response.args
@@ -28,7 +52,6 @@ module Lita
         exchange  = args.find{ |x| x =~ /e:[A-Za-z]+/ } || 'CCCAGG'
         exchange.gsub!('e:','')
         exchange  = exchange.upcase
-
         time      = args.find{ |x| x =~ /\d+\.\w+/ }
 
         if time
@@ -43,8 +66,6 @@ module Lita
           price = JSON.parse(resp.body)
           msg   = "*#{ coin }*: #{ price[currency] }#{ currency }"
         end
-
-
 
         if response.message.body.include?('-p')
           response.reply_privately msg
