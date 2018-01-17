@@ -22,4 +22,6 @@ Actual bot code is in the `lita-cryptocrat` directory.  Feel free to add feature
 
 At some point I'll set up CI and tests, but for now, just please test locally.  Be sure to comment/uncomment out the config slack/shell in `lita_config.rb`.
 
+Docs for Lita development can be found here: https://docs.lita.io/plugin-authoring/handlers/
+
 Any questions, just ping me in the channel.
