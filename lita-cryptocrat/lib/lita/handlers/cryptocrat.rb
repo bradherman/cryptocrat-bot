@@ -5,6 +5,10 @@ require 'active_support/core_ext/numeric/time'
 module Lita
   module Handlers
     class Cryptocrat < Handler
+      include HTTParty
+
+      format :json
+
       COMMANDS = {
         coin_info: {
           regex: /![a-zA-Z]{1,5}/,
@@ -46,34 +50,68 @@ module Lita
         COMMANDS[name][:help]
       end
 
+      attr_accessor :reply_message
+
+      def initialize(*args)
+        @reply_message = ""
+        super
+      end
+
       route(regex_for(:coin_info),  :coin_info, command: false, help: help_for(:coin_info))
       route(regex_for(:top),        :top,       command: true,  help: help_for(:top))
       route(regex_for(:price),      :price,     command: true,  help: help_for(:price))
       route(regex_for(:calendar),   :calendar,  command: true,  help: help_for(:calendar))
       route(regex_for(:global),     :global,    command: true,  help: help_for(:global))
 
-      def global(response)
-        url   = 'https://api.coinmarketcap.com/v1/global/'
-        resp  = HTTParty.get(url)
-        data  = JSON.parse(resp.body)
+      GLOBAL_URI    = 'https://api.coinmarketcap.com/v1/global/'
+      CAL_COINS_URI = 'https://coinmarketcal.com/api/coins'
 
-        msg   = ""
+      def historical_price_uri(time:, coin:, currency:)
+        "https://min-api.cryptocompare.com/data/pricehistorical?fsym=#{ coin }&tsyms=#{ currency }&ts=#{ time.to_i }"
+      end
 
-        total_mc = data['total_market_cap_usd']
-        active   = data['active_currencies']
+      def price_uri(coin:, currency:, exchange:)
+        "https://min-api.cryptocompare.com/data/price?fsym=#{ coin }&tsyms=#{ currency }&e=#{ exchange }"
+      end
 
-        msg += "*Total Market Cap*: $#{ total_mc }\n"
-        msg += "*Active Coins*: #{ active }"
+      def ticker_uri(limit:)
+        "https://api.coinmarketcap.com/v1/ticker/?limit=#{ limit }"
+      end
 
-        if response.message.body.include?('-p')
-          response.reply_privately msg
+      def multiprice_uri(coin:, tsyms:)
+        "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=#{ coin }&tsyms=#{ tsyms.join(',') }"
+      end
+
+      def calendar_uri(coin:)
+        "https://coinmarketcal.com/api/events?page=1&max=10&coins=#{ coin }&showPastEvent=false"
+      end
+
+      def respond!
+        if @response.message.body.include?('-p')
+          @response.reply_privately @reply_message
         else
-          response.reply msg
+          @response.reply @reply_message
         end
       end
 
-      def price(response)
-        args      = response.args
+      def global(input_message)
+        @response = input_message
+
+        data      = self.class.get(GLOBAL_URI)
+
+        total_mc  = commas(data['total_market_cap_usd'])
+        active    = commas(data['active_currencies'])
+
+        @reply_message += "*Total Market Cap*: $#{ total_mc }\n"
+        @reply_message += "*Active Coins*: #{ active }"
+
+        respond!
+      end
+
+      def price(input_message)
+        @response = input_message
+
+        args      = input_message.args
         coin      = args.shift.upcase
         currency  = args.find{ |x| x =~ /[a-zA-Z]+/ } || 'USD'
         exchange  = args.find{ |x| x =~ /e:[a-zA-Z]+/ } || 'CCCAGG'
@@ -82,39 +120,27 @@ module Lita
         time      = args.find{ |x| x =~ /\d+\.\w+/ }
 
         if time
-          time  = eval("#{ time }.ago")
-          url   = "https://min-api.cryptocompare.com/data/pricehistorical?fsym=#{ coin }&tsyms=#{ currency }&ts=#{ time.to_i }"
-          resp  = HTTParty.get(url)
-          price = JSON.parse(resp.body)
-          msg   = "*#{ coin }*: #{ price[coin][currency] }#{ currency } - (_#{ time.strftime('%D - %T') }_)"
+          time          = eval("#{ time }.ago")
+          price         = self.class.get(historical_price_uri(time: time, coin: coin, currency: currency))
+          @reply_message = "*#{ coin }*: #{ price[coin][currency] }#{ currency } - (_#{ time.strftime('%D - %T') }_)"
         else
-          url   = "https://min-api.cryptocompare.com/data/price?fsym=#{ coin }&tsyms=#{ currency }&e=#{ exchange }"
-          resp  = HTTParty.get(url)
-          price = JSON.parse(resp.body)
-          msg   = "*#{ coin }*: #{ price[currency] }#{ currency }"
+          price         = self.class.get(price_uri(coin: coin, currency: currency, exchange: exchange))
+          @reply_message = "*#{ coin }*: #{ price[currency] }#{ currency }"
         end
 
-        if response.message.body.include?('-p')
-          response.reply_privately msg
-        else
-          response.reply msg
-        end
+        respond!
       end
 
-      def top(response)
-        limit = response.args.first || 5
-        url   = "https://api.coinmarketcap.com/v1/ticker/?limit=#{ limit }"
-        resp  = HTTParty.get(url)
-        coins = JSON.parse(resp.body)
-        msg   = ""
+      def top(input_message)
+        @response = input_message
 
-        global_url  = 'https://api.coinmarketcap.com/v1/global/'
-        resp        = HTTParty.get(url)
-        global      = JSON.parse(resp.body)
-        total_mc    = global['total_market_cap_usd']
+        limit     = input_message.args.first || 5
+        coins     = self.class.get(ticker_uri(limit: limit))
+        global    = self.class.get(GLOBAL_URI)
+        total_mc  = global['total_market_cap_usd']
 
         coins.each do |coin|
-          pct_of_market = sprintf("%0.2f", percent(coin['price_usd'] / total_mc))
+          pct_of_market = sprintf("%0.2f", (coin['market_cap_usd'].to_f / total_mc.to_f) * 100)
           price_usd = commas(coin['price_usd'])
           price_btc = commas(coin['price_btc'])
           mc_usd    = commas(coin['market_cap_usd'])
@@ -124,31 +150,26 @@ module Lita
           pct_d     = percent(coin['percent_change_24h'])
           pct_w     = percent(coin['percent_change_7d'])
 
-          msg += "*#{ coin['name'] }*: #{ coin['symbol'] } - $#{ price_usd } / ฿#{ price_btc }\n"
-          msg += "   *Percent of Total Market*: #{ pct_of_market }%"
-          msg += "   *Change*: #{ pct_hr }%/hr - #{ pct_d }%/d - #{ pct_w }%/w\n"
-          msg += "   *Market Cap*: $#{ mc_usd }\n"
-          msg += "   *Supply*: #{ available } / #{ max }\n\n"
+          @reply_message += "*#{ coin['name'] }*: #{ coin['symbol'] } - $#{ price_usd } / ฿#{ price_btc }\n"
+          @reply_message += "   *Percent of Total Market*: #{ pct_of_market }%\n"
+          @reply_message += "   *Change*: #{ pct_hr }%/hr - #{ pct_d }%/d - #{ pct_w }%/w\n"
+          @reply_message += "   *Market Cap*: $#{ mc_usd }\n"
+          @reply_message += "   *Supply*: #{ available } / #{ max }\n\n"
         end
 
-        if response.message.body.include?('-p')
-          response.reply_privately msg
-        else
-          response.reply msg
-        end
+        respond!
       end
 
-      def coin_info(response)
-        coin  = response.match_data[0].strip.sub('!', '').upcase
-        tsyms = ['USD', 'ETH', 'BTC']
-        tsyms.delete(coin)
-        url   = "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=#{ coin }&tsyms=#{ tsyms.join(',') }"
-        resp  = HTTParty.get(url)
-
-        info  = JSON.parse(resp.body)['DISPLAY'][coin]
-        msg   = "*#{ coin }*: "
+      def coin_info(input_message)
+        @response = input_message
 
         price_usd, price_eth, price_btc = nil, nil, nil
+        coin  = input_message.match_data[0].strip.sub('!', '').upcase
+        tsyms = ['USD', 'ETH', 'BTC']
+        tsyms.delete(coin)
+
+        info  = self.class.get(multiprice_uri(coin: coin, tsyms: tsyms))['DISPLAY'][coin]
+        @reply_message = "*#{ coin }*: "
 
         price_usd = info['USD']['PRICE'].gsub(' ', '')
         price_eth = info['ETH']['PRICE'].gsub(' ', '') if info['ETH']
@@ -159,44 +180,37 @@ module Lita
         cap  = info['USD']['MKTCAP'].gsub(' ', '')
         pct  = percent(info['USD']['CHANGEPCT24HOUR'])
 
-        msg += "#{ price_usd } "
-        msg += "/ #{ price_eth } " if price_eth
-        msg += "/ #{ price_btc } " if price_btc
-        msg += "- *MC*: #{ cap } - *H*: #{ high } / *L*: #{ low } / #{ pct }%"
+        @reply_message += "#{ price_usd } "
+        @reply_message += "/ #{ price_eth } " if price_eth
+        @reply_message += "/ #{ price_btc } " if price_btc
+        @reply_message += "- *MC*: #{ cap } - *H*: #{ high } / *L*: #{ low } / #{ pct }%"
 
-        if response.message.body.include?('-p')
-          response.reply_privately msg
-        else
-          response.reply msg
-        end
+        respond!
       end
 
-      def calendar(response)
-        coins_url = "https://coinmarketcal.com/api/coins"
-        resp      = HTTParty.get(coins_url)
-        coins     = JSON.parse(resp.body)
-        coin      = response.args.first
+      def calendar(input_message)
+        @response = input_message
+
+        coins     = self.class.get(CAL_COINS_URI)
+        coin      = input_message.args.first
         coin      = coins.find{ |c| c.include?("(#{ coin })") }
-        cal_url   = "https://coinmarketcal.com/api/events?page=1&max=10&coins=#{ coin }&showPastEvent=false"
-        resp      = HTTParty.get(cal_url)
-        events    = JSON.parse(resp.body)
-        msg       = ""
 
-        events.select{ |event| event['percentage'] > 60 }.each do |event|
-          title       = event['title']
-          date        = Time.parse(event['date_event'])
-          description = event['description']
-          proof_url   = event['proof']
-          categories  = event['categories']
+        if coin
+          events  = self.class.get(calendar_uri(coin: coin))
+          events.select{ |event| event['percentage'] > 60 }.each do |event|
+            title       = event['title']
+            date        = Time.parse(event['date_event'])
+            description = event['description']
+            proof_url   = event['proof']
+            categories  = event['categories']
 
-          msg += "*<!date^#{ date.to_i }^{date_short}|Unknown>*: <#{ proof_url }|#{ title }>\n"
-        end
-
-        if response.message.body.include?('-p')
-          response.reply_privately msg
+            @reply_message += "*<!date^#{ date.to_i }^{date_short}|Unknown>*: <#{ proof_url }|#{ title }>\n"
+          end
         else
-          response.reply msg
+          @reply_message = "Could not find coin on coinmarketcal.com."
         end
+
+        respond!
       end
 
       # # # # # # # #

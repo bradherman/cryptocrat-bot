@@ -4,7 +4,6 @@ Lita.configure do |config|
   config.robot.alias = "."
 
   config.robot.locale = :en
-
   config.robot.log_level = :info
 
   # An array of user IDs that are considered administrators. These users
