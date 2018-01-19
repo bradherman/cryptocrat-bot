@@ -78,8 +78,8 @@ module Lita
         "https://api.coinmarketcap.com/v1/ticker/?limit=#{ limit }"
       end
 
-      def multiprice_uri(coin:, tsyms:)
-        "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=#{ coin }&tsyms=#{ tsyms.join(',') }"
+      def multiprice_uri(coins:, tsyms:)
+        "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=#{ coins.join(',') }&tsyms=#{ tsyms.join(',') }"
       end
 
       def calendar_uri(coin:)
@@ -164,26 +164,30 @@ module Lita
         @response = input_message
 
         price_usd, price_eth, price_btc = nil, nil, nil
-        coin  = input_message.match_data[0].strip.sub('!', '').upcase
+
+        coins = input_message.message.body.split(' ').select{ |arg| arg =~ self.class.regex_for(:coin_info) }
+        coins.map!{ |arg| arg.strip.sub('!', '').upcase }
         tsyms = ['USD', 'ETH', 'BTC']
-        tsyms.delete(coin)
 
-        info  = self.class.get(multiprice_uri(coin: coin, tsyms: tsyms))['DISPLAY'][coin]
-        @reply_message = "*#{ coin }*: "
+        info  = self.class.get(multiprice_uri(coins: coins, tsyms: tsyms))['DISPLAY']
 
-        price_usd = info['USD']['PRICE'].gsub(' ', '')
-        price_eth = info['ETH']['PRICE'].gsub(' ', '') if info['ETH']
-        price_btc = info['BTC']['PRICE'].gsub(' ', '') if info['BTC']
+        coins.each do |coin|
+          @reply_message += "*#{ coin }*: "
 
-        high = info['USD']['HIGH24HOUR'].gsub(' ', '')
-        low  = info['USD']['LOW24HOUR'].gsub(' ', '')
-        cap  = info['USD']['MKTCAP'].gsub(' ', '')
-        pct  = percent(info['USD']['CHANGEPCT24HOUR'])
+          price_usd = info[coin]['USD']['PRICE'].gsub(' ', '')
+          price_eth = info[coin]['ETH']['PRICE'].gsub(' ', '') if coin != 'ETH'
+          price_btc = info[coin]['BTC']['PRICE'].gsub(' ', '') if coin != 'BTC'
 
-        @reply_message += "#{ price_usd } "
-        @reply_message += "/ #{ price_eth } " if price_eth
-        @reply_message += "/ #{ price_btc } " if price_btc
-        @reply_message += "- *MC*: #{ cap } - *H*: #{ high } / *L*: #{ low } / #{ pct }%"
+          high = info[coin]['USD']['HIGH24HOUR'].gsub(' ', '')
+          low  = info[coin]['USD']['LOW24HOUR'].gsub(' ', '')
+          cap  = info[coin]['USD']['MKTCAP'].gsub(' ', '')
+          pct  = percent(info[coin]['USD']['CHANGEPCT24HOUR'])
+
+          @reply_message += "#{ price_usd } "
+          @reply_message += "/ #{ price_eth } " if price_eth
+          @reply_message += "/ #{ price_btc } " if price_btc
+          @reply_message += "- *MC*: #{ cap } - *H*: #{ high } / *L*: #{ low } / #{ pct }%\n"
+        end
 
         respond!
       end

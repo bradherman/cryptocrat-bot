@@ -32,8 +32,8 @@ Lita.configure do |config|
   # config.robot.adapter = :shell
 
   ## PROD
-  config.redis[:url] = ENV["REDIS_URL"]
-  config.http.port   = ENV["PORT"]
+  config.redis[:url] = ENV['REDIS_URL']
+  config.http.port   = ENV['PORT']
   config.robot.adapter = :slack
   config.robot.admins = []
   config.adapters.slack.token = ENV['SLACK_TOKEN']
