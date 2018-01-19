@@ -11,7 +11,7 @@ module Lita
 
       COMMANDS = {
         coin_info: {
-          regex: /![a-zA-Z]{1,5}/,
+          regex: /!([a-zA-Z]{1,5})/,
           help: {
             '!SYM' => 'Replies with basic info about the coin.'
           }
@@ -165,10 +165,11 @@ module Lita
 
         price_usd, price_eth, price_btc = nil, nil, nil
 
-        coins = input_message.message.body.split(' ').select{ |arg| arg =~ self.class.regex_for(:coin_info) }
-        coins.map!{ |arg| arg.strip.sub('!', '').upcase }
+        coins = input_message.message.body.scan(self.class.regex_for(:coin_info)).flatten
+        coins.map!{ |coin| coin.upcase }
         tsyms = ['USD', 'ETH', 'BTC']
 
+        url   = multiprice_uri(coins: coins, tsyms: tsyms)
         info  = self.class.get(multiprice_uri(coins: coins, tsyms: tsyms))['DISPLAY']
 
         coins.each do |coin|
