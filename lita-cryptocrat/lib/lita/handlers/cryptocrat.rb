@@ -113,15 +113,19 @@ module Lita
 
         args      = input_message.args
         coin      = args.shift.upcase
-        currency  = args.find{ |x| x =~ /[a-zA-Z]+/ } || 'USD'
+        currency  = args.find{ |x| x =~ /^[a-zA-Z]+/ } || 'USD'
         exchange  = args.find{ |x| x =~ /e:[a-zA-Z]+/ } || 'CCCAGG'
         exchange.gsub!('e:','')
         exchange  = exchange.upcase
         time      = args.find{ |x| x =~ /\d+\.\w+/ }
 
         if time
+          p time
+          p coin
+          p currency
           time          = eval("#{ time }.ago")
           price         = self.class.get(historical_price_uri(time: time, coin: coin, currency: currency))
+          p price
           @reply_message = "*#{ coin }*: #{ price[coin][currency] }#{ currency } - (_#{ time.strftime('%D - %T') }_)"
         else
           price         = self.class.get(price_uri(coin: coin, currency: currency, exchange: exchange))
